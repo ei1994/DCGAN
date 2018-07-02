@@ -77,8 +77,8 @@ def get_generator(noise_img, n_units, out_dim, reuse=False, alpha=0.01):
         hidden1 = tf.layers.dropout(hidden1, rate=0.2)
 
         # logits & outputs
-        logits = tf.layers.dense(hidden1, out_dim)
-        outputs = tf.tanh(logits)
+        logits = tf.layers.dense(hidden1, out_dim)  # shape=(?, 784)
+        outputs = tf.tanh(logits)   #shape=(?, 784)
         
         return logits, outputs
 
@@ -92,12 +92,12 @@ def get_discriminator(img, n_units, reuse=False, alpha=0.01):
     """
     
     with tf.variable_scope("discriminator", reuse=reuse):
-        # hidden layer
+        # hidden layer  全连接层
         hidden1 = tf.layers.dense(img, n_units)
-        hidden1 = tf.maximum(alpha * hidden1, hidden1)
+        hidden1 = tf.maximum(alpha * hidden1, hidden1)  # leaky relu 
         
         # logits & outputs
-        logits = tf.layers.dense(hidden1, 1)
+        logits = tf.layers.dense(hidden1, 1)  # 输出判别器的判断，真或假
         outputs = tf.sigmoid(logits)
         
         return logits, outputs
@@ -129,10 +129,10 @@ tf.reset_default_graph()
 
 real_img, noise_img = get_inputs(img_size, noise_size)
 
-# generator
+# generator  shape=(?, 784)
 g_logits, g_outputs = get_generator(noise_img, g_units, img_size)
 
-# discriminator
+# discriminator  输出判断的结果，真或假
 d_logits_real, d_outputs_real = get_discriminator(real_img, d_units)
 d_logits_fake, d_outputs_fake = get_discriminator(g_outputs, d_units, reuse=True)
 
@@ -151,7 +151,7 @@ d_logits_fake, d_outputs_fake = get_discriminator(g_outputs, d_units, reuse=True
 
 
 # discriminator的loss
-# 识别真实图片
+# 识别真实图片, 让判断1的项更soft, 防止过拟合的方式
 d_loss_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=d_logits_real, 
                                                                      labels=tf.ones_like(d_logits_real)) * (1 - smooth))
 # 识别生成的图片
@@ -172,9 +172,9 @@ g_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=d_logits_
 # In[33]:
 
 
-train_vars = tf.trainable_variables()
+train_vars = tf.trainable_variables()  # 返回的是需要训练的变量列表
 
-# generator中的tensor
+# generator中的tensor  ，遍历列表，找到以指定单词开头的变量
 g_vars = [var for var in train_vars if var.name.startswith("generator")]
 # discriminator中的tensor
 d_vars = [var for var in train_vars if var.name.startswith("discriminator")]
@@ -192,7 +192,7 @@ g_train_opt = tf.train.AdamOptimizer(learning_rate).minimize(g_loss, var_list=g_
 # batch_size
 batch_size = 64
 # 训练迭代轮数
-epochs = 300
+epochs = 50
 # 抽取样本数
 n_sample = 25
 
@@ -247,7 +247,7 @@ with tf.Session() as sess:
         sample_noise = np.random.uniform(-1, 1, size=(n_sample, noise_size))
         gen_samples = sess.run(get_generator(noise_img, g_units, img_size, reuse=True),
                                feed_dict={noise_img: sample_noise})
-        samples.append(gen_samples)
+        samples.append(gen_samples)  # 每轮训练后都保存一下使用数据生成的图片
         
         # 存储checkpoints
         saver.save(sess, './checkpoints/generator.ckpt')
@@ -263,8 +263,8 @@ with open('train_samples.pkl', 'wb') as f:
 
 
 fig, ax = plt.subplots(figsize=(20,7))
-losses = np.array(losses)
-plt.plot(losses.T[0], label='Discriminator Total Loss')
+losses = np.array(losses)  
+plt.plot(losses.T[0], label='Discriminator Total Loss')  # 取loss的每一列画曲线
 plt.plot(losses.T[1], label='Discriminator Real Loss')
 plt.plot(losses.T[2], label='Discriminator Fake Loss')
 plt.plot(losses.T[3], label='Generator')
@@ -297,7 +297,7 @@ def view_samples(epoch, samples):
         ax.imshow(img.reshape((28,28)), cmap='Greys_r')
     
     return fig, axes
-
+#  axes.flatten() 
 
 # In[63]:
 
@@ -311,7 +311,8 @@ _ = view_samples(-1, samples) # 显示最后一轮的outputs
 
 
 # 指定要查看的轮次
-epoch_idx = [0, 5, 10, 20, 40, 60, 80, 100, 150, 250] # 一共300轮，不要越界
+#epoch_idx = [0, 5, 10, 20, 40, 60, 80, 100, 150, 250] # 一共300轮，不要越界
+epoch_idx = [0, 5, 10 ,20, 40] # 一共300轮，不要越界
 show_imgs = []
 for i in epoch_idx:
     show_imgs.append(samples[i][1])
